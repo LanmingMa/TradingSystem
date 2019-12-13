@@ -140,88 +140,103 @@ def overview():
 def trading():
     if not validateLogin():
         return render_template('login.html')
-    cursor, conn = mysqlConfig.mysql_connection()
+
     if request.method == "POST":
-        # show ask price and bid price
-        cursor.execute("SELECT crypto_id FROM crypto WHERE crypto_name = %s", (request.form['crypto_name'],))
-        crypto_id = cursor.fetchone()[0]
-        side = request.form['side']
-        time = datetime.datetime.now()
-        time.strftime('%Y-%m-%d %H:%M:%S')
+        try:
+            cursor, conn = mysqlConfig.mysql_connection()
+            conn.autocommit = False
 
-        if side == 'Buy':
-            # create transaction
-            trans = ts.Transaction(crypto_id,
-                                   request.form['crypto_name'],
-                                   side,
-                                   float(request.form['buy_amount']),
-                                   float(request.form['buy_price']),
-                                   time)
+            # show ask price and bid price
+            cursor.execute("SELECT crypto_id FROM crypto WHERE crypto_name = %s", (request.form['crypto_name'],))
+            crypto_id = cursor.fetchone()[0]
+            side = request.form['side']
+            time = datetime.datetime.now()
+            time.strftime('%Y-%m-%d %H:%M:%S')
 
-            # check if valid price
-            coin_name = trans.name.lower() + 'usdt'
-            compare_price = float(api.marketData(coin_name)['askPrice'])
-            if trans.price < compare_price:
-                error_message = "The price you set is lower than the current ask price. Please reset a valid one."
-                return render_template('error.html',error_message=error_message)
-            if trans.price > compare_price * 1.1:
-                error_message = 'The price you set is 10% higher than the current ask price. Please reset a valid one.'
-                return render_template('error.html',error_message=error_message)
+            if side == 'Buy':
+                # create transaction
+                trans = ts.Transaction(crypto_id,
+                                       request.form['crypto_name'],
+                                       side,
+                                       float(request.form['buy_amount']),
+                                       float(request.form['buy_price']),
+                                       time)
 
-            # check if enough cash
+                # check if valid price
+                coin_name = trans.name.lower() + 'usdt'
+                compare_price = float(api.marketData(coin_name)['askPrice'])
+                if trans.price < compare_price:
+                    error_message = "The price you set is lower than the current ask price. Please reset a valid one."
+                    return render_template('error.html',error_message=error_message)
+                if trans.price > compare_price * 1.1:
+                    error_message = 'The price you set is 10% higher than the current ask price. Please reset a valid one.'
+                    return render_template('error.html',error_message=error_message)
+
+                # check if enough cash
+                remaining_cash = ts.get_remaining_cash(cursor, conn, session['userId'])
+                if not ts.enough_cash_to_buy(remaining_cash, trans.get_amount()):
+                    error_message = "You don't have enough cash to buy. Please go to Account-Deposit to refill your account."
+                    return render_template('error.html',error_message=error_message)
+
+                # update vwap
+                remaining_coin = ts.get_remaining_coin(cursor, conn, trans.id, session['userId'])
+                VWAP = ts.get_VWAP(cursor, conn, trans.id, session['userId'])
+                updated_VWAP = (VWAP * remaining_coin + decimal.Decimal(trans.get_amount())) / (
+                        remaining_coin + decimal.Decimal(trans.amount))
+                ts.update_VWAP(cursor, conn, trans.id, session['userId'], updated_VWAP)
+
+            if side == 'Sell':
+                # create transaction
+                trans = ts.Transaction(crypto_id,
+                                       request.form['crypto_name'],
+                                       side,
+                                       float(request.form['sell_amount']),
+                                       float(request.form['sell_price']),
+                                       time)
+                trans.adjust_side()
+
+                # check if valid price
+                coin_name = trans.name.lower() + 'usdt'
+                if trans.price > float(api.marketData(coin_name)['bidPrice']):
+                    error_message = 'The price you set is higher than the current bid price. Please reset a valid one.'
+                    return render_template('error.html',error_message=error_message)
+                elif trans.price < float(api.marketData(coin_name)['bidPrice']) * 0.9:
+                    error_message = 'The price you set is 10% lower than the current bid price. Please reset a valid one.'
+                    return render_template('error.html',error_message=error_message)
+
+                # check if we have enough coin
+                remaining_coin = ts.get_remaining_coin(cursor, conn, trans.id, session['userId'])
+                if remaining_coin < abs(trans.amount):
+                    error_message = "You don't have enough coin to sell. Please try again."
+                    return render_template('error.html',error_message=error_message)
+
+                # update RPL
+                ts.update_RPL(cursor, conn, crypto_id, trans, session['userId'], trans.price)
+
+            # update cash
             remaining_cash = ts.get_remaining_cash(cursor, conn, session['userId'])
-            if not ts.enough_cash_to_buy(remaining_cash, trans.get_amount()):
-                error_message = "You don't have enough cash to buy. Please go to Account-Deposit to refill your account."
-                return render_template('error.html',error_message=error_message)
-
-            # update vwap
-            remaining_coin = ts.get_remaining_coin(cursor, conn, trans.id, session['userId'])
-            VWAP = ts.get_VWAP(cursor, conn, trans.id, session['userId'])
-            updated_VWAP = (VWAP * remaining_coin + decimal.Decimal(trans.get_amount())) / (
-                    remaining_coin + decimal.Decimal(trans.amount))
-            ts.update_VWAP(cursor, conn, trans.id, session['userId'], updated_VWAP)
-
-        if side == 'Sell':
-            # create transaction
-            trans = ts.Transaction(crypto_id,
-                                   request.form['crypto_name'],
-                                   side,
-                                   float(request.form['sell_amount']),
-                                   float(request.form['sell_price']),
-                                   time)
-            trans.adjust_side()
-
-            # check if valid price
-            coin_name = trans.name.lower() + 'usdt'
-            if trans.price > float(api.marketData(coin_name)['bidPrice']):
-                error_message = 'The price you set is higher than the current bid price. Please reset a valid one.'
-                return render_template('error.html',error_message=error_message)
-            elif trans.price < float(api.marketData(coin_name)['bidPrice']) * 0.9:
-                error_message = 'The price you set is 10% lower than the current bid price. Please reset a valid one.'
-                return render_template('error.html',error_message=error_message)
-
-            # check if we have enough coin
-            remaining_coin = ts.get_remaining_coin(cursor, conn, trans.id, session['userId'])
-            if remaining_coin < abs(trans.amount):
-                error_message = "You don't have enough coin to sell. Please try again."
-                return render_template('error.html',error_message=error_message)
-
-            # update RPL
-            ts.update_RPL(cursor, conn, crypto_id, trans, session['userId'])
-
-        # update cash
-        remaining_cash = ts.get_remaining_cash(cursor, conn, session['userId'])
-        updated_cash = remaining_cash - decimal.Decimal(trans.get_amount())
-        ts.update_cash(cursor, conn, updated_cash, session['userId'])
+            updated_cash = remaining_cash - decimal.Decimal(trans.get_amount())
+            ts.update_cash(cursor, conn, updated_cash, session['userId'])
 
 
-        # update blotter
-        ts.update_blotter(cursor, conn, trans.id, trans.amount, trans.price, trans.time,
-                          trans.side, session['userId'])
+            # update blotter
+            ts.update_blotter(cursor, conn, trans.id, trans.amount, trans.price, trans.time,
+                              trans.side, session['userId'])
 
-        # update crypto_bank
-        remaining_coin += decimal.Decimal(trans.amount)
-        ts.update_crypto_bank(cursor, conn, crypto_id, remaining_coin, session['userId'])
+            # update crypto_bank
+            remaining_coin += decimal.Decimal(trans.amount)
+            ts.update_crypto_bank(cursor, conn, crypto_id, remaining_coin, session['userId'])
+
+        except conn.Error as error:
+            print("Failed to update record to database rollback: {}".format(error))
+            # reverting changes because of exception
+            conn.rollback()
+
+        finally:
+            if (conn.is_connected()):
+                cursor.close()
+                conn.close()
+                print("connection is closed")
 
         return redirect(url_for('trading'))
 
