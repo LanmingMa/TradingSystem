@@ -162,16 +162,16 @@ def trading():
             coin_name = trans.name.lower() + 'usdt'
             compare_price = float(api.marketData(coin_name)['askPrice'])
             if trans.price < compare_price:
-                error_message = "The price you set is lower than the current bid price. Please reset a valid one."
+                error_message = "The price you set is lower than the current ask price. Please reset a valid one."
                 return render_template('error.html',error_message=error_message)
             if trans.price > compare_price * 1.1:
-                error_message = 'The price you set is 10% higher than the current bid price. Please reset a valid one.'
+                error_message = 'The price you set is 10% higher than the current ask price. Please reset a valid one.'
                 return render_template('error.html',error_message=error_message)
 
             # check if enough cash
             remaining_cash = ts.get_remaining_cash(cursor, conn, session['userId'])
             if not ts.enough_cash_to_buy(remaining_cash, trans.get_amount()):
-                error_message = "You don't have enough cash to buy"
+                error_message = "You don't have enough cash to buy. Please go to Account-Deposit to refill your account."
                 return render_template('error.html',error_message=error_message)
 
             # update vwap
@@ -194,10 +194,10 @@ def trading():
             # check if valid price
             coin_name = trans.name.lower() + 'usdt'
             if trans.price > float(api.marketData(coin_name)['bidPrice']):
-                error_message = 'The price you set is higher than the current ask price. Please reset a valid one.'
+                error_message = 'The price you set is higher than the current bid price. Please reset a valid one.'
                 return render_template('error.html',error_message=error_message)
             elif trans.price < float(api.marketData(coin_name)['bidPrice']) * 0.9:
-                error_message = 'The price you set is 10% lower than the current ask price. Please reset a valid one.'
+                error_message = 'The price you set is 10% lower than the current bid price. Please reset a valid one.'
                 return render_template('error.html',error_message=error_message)
 
             # check if we have enough coin
