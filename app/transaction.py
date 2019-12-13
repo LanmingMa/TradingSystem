@@ -53,7 +53,7 @@ def update_RPL(cursor, conn, crypto_id, trans, userId, price):
     cursor.execute(VWAP_q, v)
     VWAP = cursor.fetchone()[0]
 
-    updated_RPL = RPL + ((decimal.Decimal(price) - VWAP) * decimal.Decimal(trans.amount))
+    updated_RPL = RPL + ((decimal.Decimal(price) - VWAP) * (decimal.Decimal(trans.amount)*(-1)))
     cursor.execute("UPDATE PnL SET RPL = %s WHERE crypto_id = %s AND user_id = %s",
                    (updated_RPL, crypto_id, userId,))
 
