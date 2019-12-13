@@ -106,7 +106,7 @@ def display_blotter_PnL(cursor, conn, userId):
     get_coins = """SELECT cr.crypto_name, bk.amount, p.UPL, p.RPL, p.VWAP
                                FROM PnL p INNER JOIN crypto_bank bk INNER JOIN crypto cr
                                 WHERE p.crypto_id = bk.crypto_id AND p.user_id = bk.user_id AND cr.crypto_id = bk.crypto_id
-                                WHERE bk.crypro_id != 4
+                                WHERE bk.crypto_id != 4
                                 AND p.user_id = %s"""
     v = (userId,)
     cursor.execute(get_coins, v)
