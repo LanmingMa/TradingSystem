@@ -269,13 +269,14 @@ def trading():
                            (bid_price[i], i + 1, userId,))
         conn.commit()
 
-        # display blotter the pnl
+        # display blotter the pnl & Cash
         cursor, conn = mysqlConfig.mysql_connection()
         blotter_list, PnL_list = ts.display_blotter_PnL(cursor, conn, session['userId'])
+        Cash_quantity = ts.get_remaining_cash(cursor, conn, session['userId'])
         cursor.close()
         conn.close()
 
-    return render_template('trading.html', blotter_list=blotter_list, PnL_list=PnL_list,len=len(currencies), currencies=currencies)
+    return render_template('trading.html', Cash_quantity = Cash_quantity, blotter_list=blotter_list, PnL_list=PnL_list,len=len(currencies), currencies=currencies)
 
 
 @app.route('/Account', methods=["GET", "POST"])
