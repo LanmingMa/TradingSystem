@@ -33,7 +33,6 @@ def enough_cash_to_buy(remaining_cash, need_cash):
 def update_cash(cursor, conn, updated_cash, userId):
     cursor.execute("UPDATE crypto_bank SET amount = %s WHERE crypto_id = 4 AND user_id = %s",
                    (updated_cash, userId,))
-    conn.commit()
 
 
 def get_remaining_coin(cursor, conn, crypto_id, userId):
@@ -54,10 +53,9 @@ def update_RPL(cursor, conn, crypto_id, trans, userId, price):
     cursor.execute(VWAP_q, v)
     VWAP = cursor.fetchone()[0]
 
-    updated_RPL = RPL + ((price - VWAP) * decimal.Decimal(trans.amount))
+    updated_RPL = RPL + ((decimal.Decimal(price) - VWAP) * decimal.Decimal(trans.amount))
     cursor.execute("UPDATE PnL SET RPL = %s WHERE crypto_id = %s AND user_id = %s",
                    (updated_RPL, crypto_id, userId,))
-    conn.commit()
 
 
 def get_VWAP(cursor, conn, crypto_id, userId):
@@ -72,7 +70,6 @@ def update_VWAP(cursor, conn, crypto_id, userId, updated_VWAP):
     update_VWAP_q = """UPDATE PnL SET VWAP = %s WHERE crypto_id = %s AND user_id = %s"""
     v = (updated_VWAP, crypto_id, userId,)
     cursor.execute(update_VWAP_q, v)
-    conn.commit()
 
 
 def update_blotter(cursor, conn, crypto_id, amount, price, time, side, userId):
@@ -80,13 +77,11 @@ def update_blotter(cursor, conn, crypto_id, amount, price, time, side, userId):
                                         VALUES (%s, %s, %s, %s, %s, %s)"""
     val = (crypto_id, amount, price, time, side, userId,)
     cursor.execute(sql, val)
-    conn.commit()
 
 
 def update_crypto_bank(cursor, conn, crypto_id, remaining_coin, userId):
     cursor.execute("UPDATE crypto_bank SET amount = %s WHERE crypto_id = %s AND user_id = %s",
                    (remaining_coin, crypto_id, userId,))
-    conn.commit()
 
 def display_blotter_PnL(cursor, conn, userId):
     show_blotter = """SELECT b.trading_date, c.crypto_name, b.quantity, b.price, b.side 

@@ -10,6 +10,9 @@ import hashlib
 from datetime import timedelta
 
 import mysqlConfig
+from mysql.connector import Error
+from mysql.connector import errorcode
+
 import transaction as ts
 import api
 
@@ -227,6 +230,8 @@ def trading():
             remaining_coin += decimal.Decimal(trans.amount)
             ts.update_crypto_bank(cursor, conn, crypto_id, remaining_coin, session['userId'])
 
+            conn.commit()
+
         except conn.Error as error:
             print("Failed to update record to database rollback: {}".format(error))
             # reverting changes because of exception
@@ -261,6 +266,7 @@ def trading():
         LitecoinData = currencyData('Litecoin', api.marketData('ltcusdt'), LitecoinWeekData, 'ltc')
         currencies = [BitcoinData, EthriumData, LitecoinData]
 
+        cursor, conn = mysqlConfig.mysql_connection()
         # update UPL
         coins = ['btcusdt', 'ethusdt', 'ltcusdt']
         bid_price = []
