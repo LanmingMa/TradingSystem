@@ -168,8 +168,8 @@ def trading():
                 # check if valid price
                 coin_name = trans.name.lower() + 'usdt'
                 compare_price = float(api.marketData(coin_name)['askPrice'])
-                if trans.price < compare_price:
-                    error_message = "The price you set is lower than the current ask price. Please reset a valid one."
+                if trans.price < compare_price * 0.95:
+                    error_message = "The price you set is 5% lower than the current ask price. Please reset a valid one."
                     return render_template('error.html',error_message=error_message)
                 if trans.price > compare_price * 1.1:
                     error_message = 'The price you set is 10% higher than the current ask price. Please reset a valid one.'
@@ -200,8 +200,8 @@ def trading():
 
                 # check if valid price
                 coin_name = trans.name.lower() + 'usdt'
-                if trans.price > float(api.marketData(coin_name)['bidPrice']):
-                    error_message = 'The price you set is higher than the current bid price. Please reset a valid one.'
+                if trans.price > float(api.marketData(coin_name)['bidPrice']) * 1.05:
+                    error_message = 'The price you set is 5% higher than the current bid price. Please reset a valid one.'
                     return render_template('error.html',error_message=error_message)
                 elif trans.price < float(api.marketData(coin_name)['bidPrice']) * 0.9:
                     error_message = 'The price you set is 10% lower than the current bid price. Please reset a valid one.'
