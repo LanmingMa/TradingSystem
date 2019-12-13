@@ -294,10 +294,11 @@ def account():
         # update cash amount
         ts.update_cash(cursor, conn, updated_cash, session['userId'])
 
+    Cash_quantity = ts.get_remaining_cash(cursor, conn, session['userId'])
     blotter_list, PnL_list = ts.display_blotter_PnL(cursor, conn, session['userId'])
     cursor.close()
     conn.close()
-    return render_template('withdrawl.html', blotter_list=blotter_list, PnL_list=PnL_list)
+    return render_template('withdrawl.html', Cash_quantity = Cash_quantity, blotter_list=blotter_list, PnL_list=PnL_list)
 
 
 @app.route('/_dataUpdate', methods=['GET'])
